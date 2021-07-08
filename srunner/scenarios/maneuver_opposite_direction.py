@@ -43,11 +43,12 @@ class ManeuverOppositeDirection(BasicScenario):
         Setup all relevant parameters and create scenario
         obstacle_type -> flag to select type of leading obstacle. Values: vehicle, barrier
         """
+
         self._world = world
         self._map = CarlaDataProvider.get_map()
         self._first_vehicle_location = 50
         self._second_vehicle_location = self._first_vehicle_location + 60
-        self._ego_vehicle_drive_distance = self._second_vehicle_location * 2
+        self._ego_vehicle_drive_distance = self._second_vehicle_location
         self._start_distance = self._first_vehicle_location * 0.9
         self._opposite_speed = 5.56   # m/s
         self._source_gap = 40   # m
@@ -56,7 +57,7 @@ class ManeuverOppositeDirection(BasicScenario):
         self._sink_location = None
         self._blackboard_queue_name = 'ManeuverOppositeDirection/actor_flow_queue'
         self._queue = py_trees.blackboard.Blackboard().set(self._blackboard_queue_name, Queue())
-        self._obstacle_type = obstacle_type
+        self._obstacle_type = "vehicle" #obstacle_type
         self._first_actor_transform = None
         self._second_actor_transform = None
         self._third_actor_transform = None
@@ -69,12 +70,14 @@ class ManeuverOppositeDirection(BasicScenario):
             config,
             world,
             debug_mode,
-            criteria_enable=criteria_enable)
+            criteria_enable=False)
+
 
     def _initialize_actors(self, config):
         """
         Custom initialization
         """
+
         first_actor_waypoint, _ = get_waypoint_in_distance(self._reference_waypoint, self._first_vehicle_location)
         second_actor_waypoint, _ = get_waypoint_in_distance(self._reference_waypoint, self._second_vehicle_location)
         second_actor_waypoint = second_actor_waypoint.get_left_lane()
@@ -82,6 +85,8 @@ class ManeuverOppositeDirection(BasicScenario):
         first_actor_transform = carla.Transform(
             first_actor_waypoint.transform.location,
             first_actor_waypoint.transform.rotation)
+
+
         if self._obstacle_type == 'vehicle':
             first_actor_model = 'vehicle.nissan.micra'
         else:
@@ -96,6 +101,7 @@ class ManeuverOppositeDirection(BasicScenario):
                 second_prop_waypoint.transform.location + offset_location, first_actor_transform.rotation)
             second_prop_actor = CarlaDataProvider.request_new_actor(first_actor_model, second_prop_transform)
             second_prop_actor.set_simulate_physics(True)
+        
         first_actor = CarlaDataProvider.request_new_actor(first_actor_model, first_actor_transform)
         first_actor.set_simulate_physics(True)
         second_actor = CarlaDataProvider.request_new_actor('vehicle.audi.tt', second_actor_waypoint.transform)
@@ -106,14 +112,18 @@ class ManeuverOppositeDirection(BasicScenario):
             self.other_actors.append(second_prop_actor)
 
         self._source_transform = second_actor_waypoint.transform
-        sink_waypoint = second_actor_waypoint.next(1)[0]
-        while not sink_waypoint.is_intersection:
-            sink_waypoint = sink_waypoint.next(1)[0]
-        self._sink_location = sink_waypoint.transform.location
+
+        # sink_waypoint = second_actor_waypoint.next(1)[0]
+        # while not sink_waypoint.is_intersection:
+        #     sink_waypoint = sink_waypoint.next(1)[0]
+        # self._sink_location = sink_waypoint.transform.location
+        self._sink_location = self._reference_waypoint.get_left_lane().transform.location
 
         self._first_actor_transform = first_actor_transform
         self._second_actor_transform = second_actor_waypoint.transform
-        self._third_actor_transform = second_prop_transform
+        if self._obstacle_type != 'vehicle':
+            self._third_actor_transform = second_prop_transform
+
 
     def _create_behavior(self):
         """
@@ -123,18 +133,20 @@ class ManeuverOppositeDirection(BasicScenario):
         opposite direction in the oncoming lane.
         """
 
+
         # Leaf nodes
         actor_source = ActorSource(
             ['vehicle.audi.tt', 'vehicle.tesla.model3', 'vehicle.nissan.micra'],
             self._source_transform, self._source_gap, self._blackboard_queue_name)
-        actor_sink = ActorSink(self._sink_location, 10)
+        actor_sink = ActorSink(self._sink_location, 2)
         ego_drive_distance = DriveDistance(self.ego_vehicles[0], self._ego_vehicle_drive_distance)
         waypoint_follower = WaypointFollower(
             self.other_actors[1], self._opposite_speed,
             blackboard_queue_name=self._blackboard_queue_name, avoid_collision=True)
 
         # Non-leaf nodes
-        parallel_root = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        parallel_root = py_trees.composites.Parallel("Waiting for end position", 
+                                                        policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
 
         # Building tree
         parallel_root.add_child(ego_drive_distance)
@@ -142,14 +154,17 @@ class ManeuverOppositeDirection(BasicScenario):
         parallel_root.add_child(actor_sink)
         parallel_root.add_child(waypoint_follower)
 
-        scenario_sequence = py_trees.composites.Sequence()
+        scenario_sequence = py_trees.composites.Sequence("Sequence Behavior")
         scenario_sequence.add_child(ActorTransformSetter(self.other_actors[0], self._first_actor_transform))
         scenario_sequence.add_child(ActorTransformSetter(self.other_actors[1], self._second_actor_transform))
-        scenario_sequence.add_child(ActorTransformSetter(self.other_actors[2], self._third_actor_transform))
+        if self._obstacle_type != 'vehicle':
+            scenario_sequence.add_child(ActorTransformSetter(self.other_actors[2], self._third_actor_transform))
         scenario_sequence.add_child(parallel_root)
         scenario_sequence.add_child(ActorDestroy(self.other_actors[0]))
         scenario_sequence.add_child(ActorDestroy(self.other_actors[1]))
-        scenario_sequence.add_child(ActorDestroy(self.other_actors[2]))
+        if self._obstacle_type != 'vehicle':
+            scenario_sequence.add_child(ActorDestroy(self.other_actors[2]))
+
 
         return scenario_sequence
 
@@ -158,10 +173,12 @@ class ManeuverOppositeDirection(BasicScenario):
         A list of all test criteria will be created that is later used
         in parallel behavior tree.
         """
+
         criteria = []
 
         collision_criterion = CollisionTest(self.ego_vehicles[0])
         criteria.append(collision_criterion)
+
 
         return criteria
 
