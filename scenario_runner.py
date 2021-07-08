@@ -571,11 +571,12 @@ def main():
         print("The route mode cannot be used together with a scenario (incl. OpenSCENARIO)'\n\n")
         parser.print_help(sys.stdout)
         return 1
-
-    if arguments.agent and (arguments.openscenario or arguments.scenario):
-        print("Agents are currently only compatible with route scenarios'\n\n")
-        parser.print_help(sys.stdout)
-        return 1
+    
+    # Disable agent compatible check
+    # if arguments.agent and (arguments.openscenario or arguments.scenario):
+    #     print("Agents are currently only compatible with route scenarios'\n\n")
+    #     parser.print_help(sys.stdout)
+    #     return 1
 
     if arguments.route:
         arguments.reloadWorld = True
