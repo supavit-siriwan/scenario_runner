@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<scenarios>
+    <scenario name="OvertakingSingleCarriageway_0" type="OvertakingSingleCarriageway" town="straight_road">
+        <ego_vehicle x="2" y="-100" z="0.5" yaw="-90" model="vehicle.tesla.model3" />
+        <weather cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+    </scenario>
+    <scenario name="OvertakingSingleCarriageway_1" type="OvertakingSingleCarriageway" town="Town01">
+        <ego_vehicle x="107" y="133" z="0.5" yaw="0" model="vehicle.tesla.model3" />
+    </scenario>
+</scenarios>
