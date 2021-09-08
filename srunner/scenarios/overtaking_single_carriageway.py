@@ -38,7 +38,7 @@ class OvertakingSingleCarriageway(BasicScenario):
     """
 
     def __init__(self, world, ego_vehicles, config, randomize=False, debug_mode=False, criteria_enable=True,
-                 obstacle_type='barrier', timeout=120):
+                 obstacle_type='barrier', timeout=300):
         """
         Setup all relevant parameters and create scenario
         obstacle_type -> flag to select type of leading obstacle. Values: vehicle, barrier
