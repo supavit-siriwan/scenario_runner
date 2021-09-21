@@ -449,6 +449,7 @@ class ScenarioRunner(object):
             for _ in range(self._args.repetitions):
                 result = self._load_and_run_scenario(config)
 
+            time.sleep(5)
             self._cleanup()
         return result
 
