@@ -329,6 +329,7 @@ class ScenarioRunner(object):
             settings.synchronous_mode = True
             settings.fixed_delta_seconds = 1.0 / self.frame_rate
             self.world.apply_settings(settings)
+            self.client.reload_world(False)
 
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
